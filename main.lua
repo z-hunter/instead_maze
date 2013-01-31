@@ -6,7 +6,6 @@ require "sprites"
 
 global {--{{{
 
-	spa,
 	maz = {},	
 
 }--}}}
@@ -22,13 +21,13 @@ maze = {
 		local maze = {};
 		
 		for i=1, xs do
-			maze[i] = {};
-			for j=1, ys do
-				maze[i][j] = {};				
-				-- maze[i][j].type 	-- тип клетки: nil = пусто, 1 = гориз. корридор 2 = верт. коридор, 10 = комната
-				maze[i][j].dir = {};	-- стороны перехода: .l .u .r .d  .up .down
-							  -->  nil = стена, 1 = проход, 2 = дверь закрыта, 3 = дверь открыта							-->  напр. -- maze[1][1].dir.w = 1 -- в ячейке 1.1 есть проход на запад 
-			end;
+		    maze[i] = {};
+		    for j=1, ys do
+			maze[i][j] = {};				
+			-- maze[i][j].type 	-- тип клетки: nil = пусто, 1 = гориз. корридор 2 = верт. коридор, 10 = комната
+			maze[i][j].dir = {};	-- стороны перехода: .l .u .r .d  .up .down
+						  -->  nil = стена, 1 = проход, 2 = дверь закрыта, 3 = дверь открыта							-->  напр. -- maze[1][1].dir.w = 1 -- в ячейке 1.1 есть проход на запад 
+		    end;
 		end;
 		maze.xs = xs; maze.ys = ys;
 		return maze;
@@ -71,58 +70,130 @@ maze = {
 	end,
 
 
-	gen = function (M, x1,y1, x2,y2)		-- генерируем рандомный лабиринт в maze M от точки 1 к 2
+	gen_mine = function (M, x1,y1, x2,y2)		-- прогрызаем рандомный маршрут в maze M от точки 1 к 2
 		
 			
-		local tx = {}; local ty = {};  local ti=1;	-- массивы координат пройденных ячеек и индекс		
-		tx[ti] = x1; ty[ti]= y1;
-		local cx = x1; local cy = y1;				-- координаты текущей ячейки
-		local dir; local dir2; local x; local y;
-		counter = 1;
+	    local tx = {}; local ty = {};  local ti=1;	-- массивы координат пройденных ячеек и индекс		
+	    tx[ti] = x1; ty[ti]= y1;
+	    local cx = x1; local cy = y1;				-- координаты текущей ячейки
+	    local dir; local dir2; local x; local y;
+	    local counter = 1;
 				
-		--while cx ~= x2 and cy ~= y2 do			-- пока не пришли
-		    
-		    counter = counter + 1
-		    -- if counter > 100 then break end;
+	    local maxcounter = M.xs * M.ys - (M.xs + M.ys);
+	    repeat
 
-		    dir, dir2, x, y = maze.rnd_dir(M, cx, cy);	-- выбираем направление
-		    if M[cx][cy].dir[dir] then			-- если там уже есть дверь
-			if ti > 1 then
-			    ti = ti - 1;
-			    cx = tx[ti]; cy = ty[ti];
-			end;
-		    else			
-			M[cx][cy].dir[dir] = true;		-- делаем дверь
-			ti = ti + 1; tx[ti] = cx ; ty[ti] = cy;
-			cx = x; cy = y;
-			M[cx][cy].dir[dir2] = true;		-- дверь в обратном направлении
-		    end;
-		--end;
+		    counter = counter + 1; -- rollback = false;		    
 
-	end,
+		    if cx == x2 and cy == y2 then
+			return true;			
+		    end;		    
 
-	test = function ()		    
-		    counter = counter + 1; rollback = false;		    
-			
 		    repeat						
 		        dir, dir2, x, y = maze.rnd_dir(M, cx, cy, 2);	-- выбираем направление			
 		    until dir ~= oldir2					-- кроме того, откуда пришли			
 		    
 		    if M[cx][cy].dir[dir] then			-- если там уже есть дверь
-			rollback = true;
-			if ti > 1 then
+			-- rollback = true;
+			if ti > 1 then				-- и есть куда откатиться - откатываемся
 			    ti = ti - 1;
 			    cx = tx[ti]; cy = ty[ti];
+			else
+			    break
 			end;
 		    else			
-			M[cx][cy].dir[dir] = true;		-- делаем дверь
-			M[cx][cy].type = maze.t_room;		-- помечаем как комнату
-			ti = ti + 1; tx[ti] = cx ; ty[ti] = cy;
+			maze.gen_makedoor(M, cx, cy, dir);			
+			ti = ti + 1; tx[ti] = cx ; ty[ti] = cy;	    -- запоминаем где мы были
 			cx = x; cy = y;
-			oldir2 = dir2;
-			M[cx][cy].dir[dir2] = true;		-- дверь в обратном направлении
-			M[cx][cy].type = maze.t_room;		-- помечаем как комнату
+			oldir2 = dir2;				    -- запоминаем откуда пришли	
 		    end;
+
+	    until counter > maxcounter;
+		maze.gen_connect(M, cx, cy, x2, y2);
+		return true;
+	end,
+
+	test = function ()		    
+		    
+	    local maxcounter = M.xs * M.ys - (M.xs + M.ys);
+	    repeat
+
+		    counter = counter + 1; -- rollback = false;		    
+
+		    if cx == x2 and cy == y2 then
+			return true;			
+		    end;		    
+
+		    repeat						
+		        dir, dir2, x, y = maze.rnd_dir(M, cx, cy, 2);	-- выбираем направление			
+		    until dir ~= oldir2					-- кроме того, откуда пришли			
+		    
+		    if M[cx][cy].dir[dir] then			-- если там уже есть дверь
+			-- rollback = true;
+			if ti > 1 then				-- и есть куда откатиться - откатываемся
+			    ti = ti - 1;
+			    cx = tx[ti]; cy = ty[ti];
+			else
+			    break
+			end;
+		    else			
+			maze.gen_makedoor(M, cx, cy, dir);			
+			ti = ti + 1; tx[ti] = cx ; ty[ti] = cy;	    -- запоминаем где мы были
+			cx = x; cy = y;
+			oldir2 = dir2;				    -- запоминаем откуда пришли	
+		    end;
+
+	    until counter > maxcounter;
+	    maze.gen_connect(M, cx, cy, x2, y2);
+	    return true;
+	end;
+
+	gen_connect = function ( M, x1,y1, x2,y2)
+	    local cx = x2; local cy = y2;
+    	    local c2;
+	    local dir;
+	    while cx ~= x1 do
+		if cx > x1 then dir = "l"; c2 = cx-1;
+		else dir = "r"; c2 = cx+1;
+		end;
+		if M[c2][cy].type then
+		    maze.gen_makedoor (M, cx, cy, dir);
+		    return true;		
+		else
+		    maze.gen_makedoor (M, cx, cy, dir);		
+		    cx = c2;
+		end;
+	    end;
+	    while cy ~= y1 do
+		if cy > y1 then dir = "u"; c2 = cy - 1;
+		else dir = "d"; c2 = cy + 1;
+		end;
+		if M[cx][c2].type then
+		    maze.gen_makedoor (M, cx, cy, dir);
+		    return true;
+		else
+		  maze.gen_makedoor (M, cx, cy, dir);
+		  cy = c2;
+		end;
+	    end;
+
+	end,
+
+	
+
+	gen_makedoor = function (M, x1,y1, dir)			-- соединяет две ячейки дверью и делает их room
+	    local x2=x1; local y2=y1;
+	    local dir2;
+	    if dir == "u" then dir2 = "d"; y2 = y2-1;
+	    elseif dir == "d" then dir2 = "u"; y2 = y2+1;
+	    elseif dir == "l" then dir2 = "r"; x2 = x2-1;
+	    elseif dir == "r" then dir2 = "l"; x2 = x2+1;
+	    end;
+	    M[x1][y1].dir[dir] = 2;
+	    M[x1][y1].type = maze.t_room;
+	    if  x2 > 0 and x2 <= M.xs and y2 > 0 and y2 <= M.ys then
+		M[x2][y2].dir[dir2] = 2;
+		M[x2][y2].type = maze.t_room;
+	    end;
 	end;
 
 
@@ -161,7 +232,8 @@ maze = {
 
 init = function()
 	M = maze.create(10,10);--{{{
-	x1 = 2; y1 = 1;--}}}
+	x1 = rnd(5); y1 = rnd(5);--}}}
+	x2 = rnd(5)+5; y2 = rnd(5)+5;
 	tx = {}; ty = {};  ti=1;	-- массивы координат пройденных ячеек и индекс		
 	tx[ti] = x1; ty[ti]= y1;
 	cx = x1; cy = y1;				-- координаты текущей ячейки
@@ -178,7 +250,9 @@ main = room {
     	forcedsc = true,
 	nam = "лабиринт",
 	dsc = function(s)
-		maze.test()
+			maze.gen_mine(M, x1,y1,)
+
+		-- maze.gen_connect(M, cx,cy, x2,y2)
 		-- sprite_init();
 		-- s.pic = spr_cell;	
 		maze.dump(M);
