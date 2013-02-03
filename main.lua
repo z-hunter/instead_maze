@@ -13,7 +13,7 @@ global {--{{{
 
 maze = {
 
-	t_room = 10, t_corr_horiz=1, t_corr_vert=2,
+	t_room = 10, t_corr_lr=1, t_corr_ud=2,
 
 	create = function(xs, ys)		    -- возвращает maze размером xs на ys
 
@@ -35,7 +35,7 @@ maze = {
 	end,
 
 
-	dump = function (maz)				---  распечатка
+	dump = function (maz, herex, herey)				---  распечатка
 		local i; local j;		
 	
 		for j=1, maz.ys do
@@ -60,14 +60,39 @@ maze = {
 				 elseif M.d then S = spr_dd;
 				 elseif M.l then S = spr_dl;
 				end;
-			-- else p(maze[i][j].type)
+			elseif maz[i][j].type == maze.t_corr_lr then
+
+
+				if M.l and M.r==1 and M.u and M.d  then S = spr_cor_lr_dud;
+
+   				 elseif M.l and not M.r and not M.u and not M.d then S = spr_cor_lr_cr;
+				 elseif M.r and not M.l and not M.u and not M.d then S = spr_cor_lr_cl;
+				 elseif M.u and M.l and M.d and not M.r then S = spr_cor_lr_dud_cr;
+				 elseif M.u and M.r and M.d and not M.l then S = spr_cor_lr_dud_cl;
+
+				 elseif M.d and M.r and not M.u and not M.l  then S = spr_cor_lr_dd_cl;
+				 elseif M.d and M.l and not M.u and not M.r  then S = spr_cor_lr_dd_cr;
+				 elseif M.u and M.r and not M.d and not M.l  then S = spr_cor_lr_du_cl;
+				 elseif M.u and M.l and not M.d and not M.r  then S = spr_cor_lr_du_cr;				 
+				 elseif M.l and M.u and M.r==1 then S = spr_cor_lr_du
+				 elseif M.l and M.u and M.r==2 then S = spr_cor_lr_dur
+				 
+				 elseif M.l and M.d and M.r==1 then S = spr_cor_lr_dd;
+				 elseif M.l and M.d and M.r==2 then S = spr_cor_lr_ddr;
+				 else S = spr_cor_lr;				 
+				end;
 			end;
-					    
-			pr( img(S) );
+			    local SP = sprite.dup(S);
+			    if i==herex and j==herey then
+				sprite.copy(spr_heredot, SP, 1,1);			    
+			    end;
+			    pr( img(SP) );
+			
 		    end;
 		    pn();
 		end;
 	end,
+
 
 
 	gen_mine = function (M, x1,y1, x2,y2)		-- прогрызаем рандомный маршрут в maze M от точки 1 к 2
@@ -179,6 +204,37 @@ maze = {
 	end,
 
 	
+	gen_corridorize = function(M)			-- лабиринт это советская власть + корридоризация всей страны
+	    
+	    local function chk_lr(M, x,y)
+		if M[x][y].dir.r and M[x+1][y].dir.r and M[x+2][y].dir.r then
+		    return true
+		else return false;
+		end;
+	    end;
+
+	    local function stall_r(M, x,y)
+		while M[x][y].dir.r do
+		    M[x][y].type = maze.t_corr_lr;
+		    M[x][y].dir.r = 1;
+		    x = x+1;
+		end;
+		M[x][y].type = maze.t_corr_lr;
+		if M[x][y].dir.r then M[x][y].dir.r = 2 end;
+		return x;
+	    end;
+	    
+	    for y=1, M.ys do
+		for x=1, M.xs-3 do
+		    if chk_lr(M, x,y) then
+			x = stall_r(M,x,y);
+		    else x = x+1;
+		    end;
+		end;
+	    end;
+
+
+	end,
 
 	gen_makedoor = function (M, x1,y1, dir)			-- соединяет две ячейки дверью и делает их room
 	    local x2=x1; local y2=y1;
@@ -226,23 +282,63 @@ maze = {
 		return ret, ret2, x, y;
 	end,
 
+
+	sprites_init = function()
+		
+	    local path = "./pic/"; local ext = ".png";
+	    local names = {
+		    
+		"heredot",
+		"cor_lr",
+		"cor_lr_cl",
+		"cor_lr_cr",
+		"cor_lr_dd",
+		"cor_lr_ddr",
+		"cor_lr_dd_cl",
+		"cor_lr_dd_cr",
+		"cor_lr_dr",
+		"cor_lr_du",
+		"cor_lr_dud",
+		"cor_lr_dud_cl",
+		"cor_lr_dud_cr",
+		"cor_lr_dur",
+		"cor_lr_durd",
+		"cor_lr_du_cl",
+		"cor_lr_du_cr",
+		"cor_ud",
+		"cor_lr_du",
+		"dd",
+		"ddr",
+		"dl",
+		"dld",
+		"dldr",
+		"dlr",
+		"dlrud",	-- doors lert & right & up & down 		
+		"dlu",
+		"dlur",
+		"dr",
+		"du",
+		"dud",
+		"duld",
+		"dur",
+		"durd",
+		"cell",	-- пустая ячейка
+	    };
+
+	    for _, v in pairs(names) do
+		_G["spr_"..v] = spriteload(path..v..ext);
+	    end;	
+        end,
+
 };
 
 
 
 init = function()
-	M = maze.create(10,10);--{{{
-	x1 = rnd(5); y1 = rnd(5);--}}}
+	M = maze.create(10,10);
+	x1 = rnd(5); y1 = rnd(5);
 	x2 = rnd(5)+5; y2 = rnd(5)+5;
-	tx = {}; ty = {};  ti=1;	-- массивы координат пройденных ячеек и индекс		
-	tx[ti] = x1; ty[ti]= y1;
-	cx = x1; cy = y1;				-- координаты текущей ячейки
-	track = 0;
-	-- dir; dir2; x; y;
-	counter = 1;
-
-	-- maz[2][4].dir.u = true;
-	sprites_init();
+	maze.sprites_init();
 end;
 
 
@@ -250,45 +346,31 @@ main = room {
     	forcedsc = true,
 	nam = "лабиринт",
 	dsc = function(s)
-			maze.gen_mine(M, x1,y1,)
+	 
+		maze.gen_mine(M, x1,y1, x2, y2)
+		maze.gen_corridorize(M)
+		
 
 		-- maze.gen_connect(M, cx,cy, x2,y2)
 		-- sprite_init();
 		-- s.pic = spr_cell;	
-		maze.dump(M);
-		p(counter);
-		pn(cx, ":", cy);
-		p ("ti=",ti);
-		if rollback then p " rollback" end;
-		p(" dir=",dir, " dir2=",dir2);
+		maze.dump(M,1,1);
+		
 	end,
 	
 };
 
 
-function sprites_init()
-	local i;
-	
-	spr_cell = sprite.load("./pic/spr_cell.png"); 	-- пустая ячейка
-	
-	spr_dlrud = sprite.load("./pic/dlrud.png")	-- doors lert & right & up & down 		
-	spr_dlur = sprite.load("./pic/dlur.png")		
-	spr_dldr = sprite.load("./pic/dldr.png")
-	spr_durd = sprite.load("./pic/durd.png")
-	spr_duld = sprite.load("./pic/duld.png")
-	spr_ddr = sprite.load("./pic/ddr.png")		
-	spr_dld = sprite.load("./pic/dld.png")		
-	spr_dlr = sprite.load("./pic/dlr.png")		
-	spr_dud = sprite.load("./pic/dud.png")		
-	spr_dur = sprite.load("./pic/dur.png")
-	spr_dlu = sprite.load("./pic/dlu.png")
-	spr_du = sprite.load("./pic/du.png")		-- door up
-	spr_dr = sprite.load("./pic/dr.png")		-- door right
-	spr_dd = sprite.load("./pic/dd.png")		
-	spr_dl = sprite.load("./pic/dl.png")		
 
 
+
+function spriteload(pat)
+    local ret = sprite.load(pat);
+    if not ret then error ("spriteload(): Cannot load "..pat);  end;
+    return ret;
 end;
+   
+   
 
 
 
