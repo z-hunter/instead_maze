@@ -1,5 +1,4 @@
 --- MAZE
-
 instead_version "1.8.0"
 require "xact";
 require "sprites"
@@ -19,7 +18,7 @@ maze = {
 
 		local i; local j;
 		local maze = {};
-		
+	
 		for i=1, xs do
 		    maze[i] = {};
 		    for j=1, ys do
@@ -81,12 +80,33 @@ maze = {
 				 elseif M.l and M.d and M.r==2 then S = spr_cor_lr_ddr;
 				 else S = spr_cor_lr;				 
 				end;
+			elseif maz[i][j].type == maze.t_corr_ud then
+				 
+				if M.l and M.r and M.u and M.d  then S = spr_cor_lr_dud;
+
+   				 elseif M.l and not M.r and not M.u and not M.d then S = spr_cor_lr_cr;
+				 elseif M.r and not M.l and not M.u and not M.d then S = spr_cor_lr_cl;
+				 elseif M.u and M.l and M.d and not M.r then S = spr_cor_lr_dud_cr;
+				 elseif M.u and M.r and M.d and not M.l then S = spr_cor_lr_dud_cl;
+
+				 elseif M.d and M.r and not M.u and not M.l  then S = spr_cor_lr_dd_cl;
+				 elseif M.d and M.l and not M.u and not M.r  then S = spr_cor_lr_dd_cr;
+				 elseif M.u and M.r and not M.d and not M.l  then S = spr_cor_lr_du_cl;
+				 elseif M.u and M.l and not M.d and not M.r  then S = spr_cor_lr_du_cr;				 
+				 elseif M.l and M.u and M.r==1 then S = spr_cor_lr_du
+				 elseif M.l and M.u and M.r==2 then S = spr_cor_lr_dur
+				 
+				 elseif M.l and M.d and M.r==1 then S = spr_cor_lr_dd;
+				 elseif M.l and M.d and M.r==2 then S = spr_cor_lr_ddr;
+				 else S = spr_cor_ud;
+				end;
 			end;
-			    local SP = sprite.dup(S);
-			    if i==herex and j==herey then
+
+			local SP = sprite.dup(S);
+			if i==herex and j==herey then
 				sprite.copy(spr_heredot, SP, 1,1);			    
-			    end;
-			    pr( img(SP) );
+			end;
+			pr( img(SP) );
 			
 		    end;
 		    pn();
@@ -213,6 +233,13 @@ maze = {
 		end;
 	    end;
 
+	    local function chk_ud(M, x,y)
+		if M[x][y].dir.d and M[x][y+1].dir.d then
+		    return true
+		else return false;
+		end;
+	    end;
+
 	    local function stall_r(M, x,y)
 		while M[x][y].dir.r do
 		    M[x][y].type = maze.t_corr_lr;
@@ -223,18 +250,58 @@ maze = {
 		if M[x][y].dir.r then M[x][y].dir.r = 2 end;
 		return x;
 	    end;
+
+	    local function stall_d(M, x,y)
+			while M[x][y].dir.d do
+		    	M[x][y].type = maze.t_corr_ud;
+		    	M[x][y].dir.d = 1;
+		    	y = y+1;
+			end;
+			M[x][y].type = maze.t_corr_ud;
+			if M[x][y].dir.d then M[x][y].dir.d = 2 end;
+			return y;
+	    end;
 	    
 	    for y=1, M.ys do
-		for x=1, M.xs-3 do
+		 for x=1, M.xs-3 do
 		    if chk_lr(M, x,y) then
-			x = stall_r(M,x,y);
+				x = stall_r(M,x,y);
 		    else x = x+1;
 		    end;
-		end;
+		 end;
 	    end;
 
+	    for x=1, M.xs do
+		 for y=1, M.ys-2 do
+		    if chk_ud(M, x,y) then
+				y = stall_d(M,x,y);
+		    else y = y+1;
+		    end;
+		 end;
+	    end;
 
 	end,
+
+	gen_roomize_1 = function(M)
+
+	 	for y=2, M.ys-1 do
+			for x=2, M.xs-1 do
+				if M[x][y].type == maze.t_corr_lr then
+					if not M[x][y-1].type then
+						M[x][y-1].type  = maze.t_room;
+						M[x][y-1].dir.d = 2;
+					elseif not M[x][y+1].type then
+						M[x][y+1].type  = maze.t_room;
+							M[x][y-1].dir.u = 2;
+					end;	
+				end;
+			
+			end;
+		end;	
+ 
+
+	end,
+
 
 	gen_makedoor = function (M, x1,y1, dir)			-- соединяет две ячейки дверью и делает их room
 	    local x2=x1; local y2=y1;
@@ -349,6 +416,7 @@ main = room {
 	 
 		maze.gen_mine(M, x1,y1, x2, y2)
 		maze.gen_corridorize(M)
+		maze.gen_roomize_1(M);
 		
 
 		-- maze.gen_connect(M, cx,cy, x2,y2)
