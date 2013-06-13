@@ -12,7 +12,8 @@ global {--{{{
 
 maze = {
 
-	t_room = 10, t_corr_lr=1, t_corr_ud=2,
+	t_room = 10, t_corr_lr=1, t_corr_ud=2,     -- константы
+	SP,					    -- буфер печати для смешивания спрайтов
 
 	create = function(xs, ys)		    -- возвращает maze размером xs на ys
 
@@ -101,18 +102,21 @@ maze = {
 				 else S = spr_cor_ud;
 				end;
 			end;
-
-			local SP = sprite.dup(S);
+			-- SP = sprite.dup(S);			
 			if i==herex and j==herey then
-				sprite.copy(spr_heredot, SP, 1,1);			    
+			    sprite.copy(S, maze.SP, 1,1);
+			    sprite.copy(spr_heredot, maze.SP, 1,1);
+			    pr( img(maze.SP) );			
+			else
+			    pr( img(S) );			    
 			end;
-			pr( img(SP) );
 			
 		    end;
 		    pn();
-		end;
-	end,
 
+		end;
+
+	end,
 
 
 	gen_mine = function (M, x1,y1, x2,y2)		-- прогрызаем рандомный маршрут в maze M от точки 1 к 2
@@ -395,7 +399,11 @@ maze = {
 	    for _, v in pairs(names) do
 		_G["spr_"..v] = spriteload(path..v..ext);
 	    end;	
-        end,
+        
+ 	    maze.SP = sprite.dup(spr_cell);	
+
+	end,
+		
 
 };
 
