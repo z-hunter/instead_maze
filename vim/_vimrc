@@ -1,0 +1,57 @@
+" Folding settings
+
+set foldenable
+set foldmethod=indent
+set foldcolumn=1
+let g:vimsyn_folding='af'
+
+set langmenu=en_US.UTF-8 
+let $LANG = 'en'
+
+colorscheme ibmedit
+set softtabstop =4
+set shiftwidth =4
+
+
+imap <c-y> <esc>Ji
+
+if has("multi_byte")
+if &termencoding == ""
+let &termencoding = &encoding
+endif
+set encoding=utf-8
+setglobal fileencoding=utf-8 bomb
+set fileencodings=utf-8,cp1251,koi8-r,latin1
+set fileformats=dos,unix,mac
+endif
+
+set nocompatible
+source $VIMRUNTIME/vimrc_example.vim
+source $VIMRUNTIME/mswin.vim
+behave mswin
+
+set diffexpr=MyDiff()
+function MyDiff()
+  let opt = '-a --binary '
+  if &diffopt =~ 'icase' | let opt = opt . '-i ' | endif
+  if &diffopt =~ 'iwhite' | let opt = opt . '-b ' | endif
+  let arg1 = v:fname_in
+  if arg1 =~ ' ' | let arg1 = '"' . arg1 . '"' | endif
+  let arg2 = v:fname_new
+  if arg2 =~ ' ' | let arg2 = '"' . arg2 . '"' | endif
+  let arg3 = v:fname_out
+  if arg3 =~ ' ' | let arg3 = '"' . arg3 . '"' | endif
+  let eq = ''
+  if $VIMRUNTIME =~ ' '
+    if &sh =~ '\<cmd'
+      let cmd = '""' . $VIMRUNTIME . '\diff"'
+      let eq = '"'
+    else
+      let cmd = substitute($VIMRUNTIME, ' ', '" ', '') . '\diff"'
+    endif
+  else
+    let cmd = $VIMRUNTIME . '\diff'
+  endif
+  silent execute '!' . cmd . ' ' . opt . arg1 . ' ' . arg2 . ' > ' . arg3 . eq
+endfunction
+
