@@ -105,7 +105,7 @@ maze = {
 			-- SP = sprite.dup(S);			
 			if i==herex and j==herey then
 			    sprite.copy(S, maze.SP, 1,1);
-			    sprite.copy(spr_heredot, maze.SP, 1,1);
+			    sprite.compose(spr_heredot, maze.SP, 0, 0);
 			    pr( img(maze.SP) );			
 			else
 			    pr( img(S) );			    
@@ -424,6 +424,8 @@ main = room {
 	 
 		maze.gen_mine(M, x1,y1, x2, y2)
 		maze.gen_corridorize(M)
+		maze.dump(M,1,1); pn();
+
 		maze.gen_roomize_1(M);
 		
 
